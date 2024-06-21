@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Navigation from './components/Navigation'
+import { Navigation } from './components/Navigation'
 import { HomePage, PokemonPage, SearchPage } from './pages';
 
 const AppRouter = () => {

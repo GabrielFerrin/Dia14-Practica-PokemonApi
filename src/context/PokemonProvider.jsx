@@ -1,71 +1,145 @@
-import { useEffect, useState } from "react"
-import { PokemonContext } from "./PokemonContext"
-import { useForm } from "../hook/userForm"
+import { useEffect, useState } from 'react'
+import { useForm } from '../hook/useForm'
+import { PokemonContext } from './PokemonContext'
 
-// eslint-disable-next-line react/prop-types
-const PokemonProvider = ({ children }) => {
-  // eslint-disable-next-line no-unused-vars
+export const PokemonProvider = ({ children }) => {
   const [allPokemons, setAllPokemons] = useState([])
-  // eslint-disable-next-line no-unused-vars
   const [globalPokemons, setGlobalPokemons] = useState([])
   const [offset, setOffset] = useState(0)
+
   const { valueSearch, onInputChange, onResetForm } = useForm({
-    valueSearch: ''
+    valueSearch: '',
   })
-  // eslint-disable-next-line no-unused-vars
+
   const [loading, setLoading] = useState(true)
-  // eslint-disable-next-line no-unused-vars
   const [active, setActive] = useState(false)
-  // get all Pokemons
+
   const getAllPokemons = async (limit = 50) => {
-    const url = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
-    const rawRes = await fetch(url)
-    const res = await rawRes.json()
-    const promises = res.results.map(async (pokemon) => {
-      return await fetch(pokemon.url).then((res) => res.json())
+    const baseURL = 'https://pokeapi.co/api/v2/'
+
+    const res = await fetch(
+      `${baseURL}pokemon?limit=${limit}&offset=${offset}`
+    )
+    const data = await res.json()
+
+    const promises = data.results.map(async pokemon => {
+      const res = await fetch(pokemon.url)
+      const data = await res.json()
+      return data
     })
-    setAllPokemons([...allPokemons, await Promise.all(promises)])
-    setOffset(offset + 50)
+    const results = await Promise.all(promises)
+
+    setAllPokemons([...allPokemons, ...results])
     setLoading(false)
   }
+
+  const getGlobalPokemons = async () => {
+    const baseURL = 'https://pokeapi.co/api/v2/'
+
+    const res = await fetch(
+      `${baseURL}pokemon?limit=100000&offset=0`
+    )
+    const data = await res.json()
+
+    const promises = data.results.map(async pokemon => {
+      const res = await fetch(pokemon.url)
+      const data = await res.json()
+      return data
+    })
+    const results = await Promise.all(promises)
+
+    setGlobalPokemons(results)
+    setLoading(false)
+  }
+
+  const getPokemonByID = async id => {
+    const baseURL = 'https://pokeapi.co/api/v2/'
+
+    const res = await fetch(`${baseURL}pokemon/${id}`)
+    const data = await res.json()
+    return data
+  }
+
   useEffect(() => {
     getAllPokemons()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  // get global Pokemons
-  const getGlobalPokemons = async () => {
-    const url = `https://pokeapi.co/api/v2/pokemon?limit=100000&offset=0`
-    const rawRes = await fetch(url)
-    const res = await rawRes.json()
-    console.log(res)
-    const promises = res.results.map(async (pokemon) => {
-      return await fetch(pokemon.url).then((res) => res.json())
-    })
-    setGlobalPokemons(await Promise.all(promises))
-    setLoading(false)
-  }
+  }, [offset])
+
   useEffect(() => {
     getGlobalPokemons()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // get pokemon by id
-  // eslint-disable-next-line no-unused-vars
-  const getPokemonById = async (id) => {
-    const url = `https://pokeapi.co/api/v2/pokemon/${id}`
-    return await fetch(url).then((res) => res.json())
+
+  const onClickLoadMore = () => {
+    setOffset(offset + 50)
   }
+
+  const [typeSelected, setTypeSelected] = useState({
+    grass: false,
+    normal: false,
+    fighting: false,
+    flying: false,
+    poison: false,
+    ground: false,
+    rock: false,
+    bug: false,
+    ghost: false,
+    steel: false,
+    fire: false,
+    water: false,
+    electric: false,
+    psychic: false,
+    ice: false,
+    dragon: false,
+    dark: false,
+    fairy: false,
+    unknow: false,
+    shadow: false,
+  })
+
+  const [filteredPokemons, setfilteredPokemons] = useState([])
+
+  const handleCheckbox = e => {
+    setTypeSelected({
+      ...typeSelected,
+      [e.target.name]: e.target.checked,
+    })
+
+    if (e.target.checked) {
+      const filteredResults = globalPokemons.filter(pokemon =>
+        pokemon.types
+          .map(type => type.type.name)
+          .includes(e.target.name)
+      )
+      setfilteredPokemons([...filteredPokemons, ...filteredResults])
+    } else {
+      const filteredResults = filteredPokemons.filter(
+        pokemon =>
+          !pokemon.types
+            .map(type => type.type.name)
+            .includes(e.target.name)
+      )
+      setfilteredPokemons([...filteredResults])
+    }
+  }
+
   return (
-    <PokemonContext.Provider value={{
-      valueSearch,
-      onInputChange,
-      onResetForm,
-      allPokemons,
-      globalPokemons,
-      getPokemonById
-    }}>
+    <PokemonContext.Provider
+      value={{
+        valueSearch,
+        onInputChange,
+        onResetForm,
+        allPokemons,
+        globalPokemons,
+        getPokemonByID,
+        onClickLoadMore,
+        loading,
+        setLoading,
+        active,
+        setActive,
+        handleCheckbox,
+        filteredPokemons,
+      }}
+    >
       {children}
     </PokemonContext.Provider>
   )
 }
-
-export default PokemonProvider
